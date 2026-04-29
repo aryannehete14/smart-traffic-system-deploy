@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Traffic System | Enterprise Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --sidebar: #0f172a;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --card-bg: #ffffff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); display: flex; min-height: 100vh; overflow: hidden; }
+
+        /* Sidebar Navigation */
+        nav { width: 260px; background: var(--sidebar); color: white; padding: 2rem 1.5rem; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 700; margin-bottom: 3rem; color: #fff; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px; color: #94a3b8; text-decoration: none; border-radius: 8px; margin-bottom: 8px; transition: 0.3s; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: #1e293b; color: white; }
+
+        /* Main Content Area */
+        main { flex: 1; padding: 1.5rem 2rem; overflow-y: auto; height: 100vh; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        header h1 { font-size: 1.5rem; font-weight: 700; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: var(--card-bg); padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1rem; }
+        .icon-box { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-val { font-size: 1.25rem; font-weight: 700; display: block; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* SYMMETRIC LAYOUT */
+        .dashboard-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-bottom: 1.5rem; align-items: stretch; }
+        .chart-card, .form-card { background: var(--card-bg); padding: 1.25rem; border-radius: 12px; border: 1px solid #e2e8f0; height: 300px; display: flex; flex-direction: column; }
+        
+        .form-group { margin-bottom: 0.5rem; }
+        label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem; color: var(--text-main); }
+        input { width: 100%; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 0.8rem; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 0.5rem 0; cursor: pointer; }
+        .checkbox-group input { width: auto; cursor: pointer; }
+        .checkbox-group label { margin: 0; cursor: pointer; font-size: 0.8rem; font-weight: 400; color: var(--text-main); }
+
+        .btn-primary { width: 100%; background: var(--primary); color: white; border: none; padding: 8px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: auto; }
+
+        /* Table Section */
+        .table-card { background: var(--card-bg); border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; padding: 10px 16px; text-align: left; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+        td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; }
+        .badge { padding: 3px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+        .badge-violation { background: #fee2e2; color: #b91c1c; }
+        .badge-ok { background: #dcfce7; color: #15803d; }
+        .badge-emergency { background: #e0f2fe; color: #0369a1; }
+        
+        .page-view { display: none; }
+        .page-view.active { display: block; }
+        .btn-delete { color: var(--danger); cursor: pointer; transition: 0.2s; }
+        .btn-delete:hover { transform: scale(1.2); }
+
+        /* Modal Styling */
+        #deleteModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center; backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo"><i data-lucide="shield-check"></i> SMART TRAFFIC</div>
+        <a id="nav-dashboard" class="nav-item active" onclick="showView('dashboard')"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+        <a id="nav-records" class="nav-item" onclick="showView('records')"><i data-lucide="database"></i> Records</a>
+        <a id="nav-settings" class="nav-item" onclick="showView('settings')"><i data-lucide="settings"></i> Settings</a>
+    </nav>
+
+    <main>
+        <div id="view-dashboard" class="page-view active">
+            <header>
+                <h1>Traffic Overview</h1>
+                <button class="btn-primary" style="width: auto; padding: 8px 16px; margin: 0;" onclick="fetchHistory()">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px; vertical-align: middle;"></i> Sync Data
+                </button>
+            </header>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon-box" style="background: #eff6ff; color: #3b82f6;"><i data-lucide="car" size="18"></i></div>
+                    <div><span class="stat-val" id="totalChecks">0</span><span class="stat-label">Total Checks</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-box" style="background: #fef2f2; color: #ef4444;"><i data-lucide="alert-triangle" size="18"></i></div>
+                    <div><span class="stat-val" id="totalViolations">0</span><span class="stat-label">Violations</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon-box" style="background: #ecfdf5; color: #10b981;"><i data-lucide="banknote" size="18"></i></div>
+                    <div><span class="stat-val" id="revenue">Rs. 0</span><span class="stat-label">Total Fines</span></div>
+                </div>
+            </div>
+
+            <div class="dashboard-top">
+                <section class="form-card">
+                    <h2 style="font-size: 0.9rem; margin-bottom: 0.75rem;">New Inspection</h2>
+                    <div class="form-group">
+                        <label>Vehicle Identity</label>
+                        <input type="text" id="vId" placeholder="e.g. MH12-AB-1234">
+                    </div>
+                    <div class="form-group">
+                        <label>Speed (km/h)</label>
+                        <input type="number" id="speed" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Patrol Zone</label>
+                        <input type="text" id="zone" placeholder="North Highway">
+                    </div>
+                    <div class="checkbox-group" onclick="document.getElementById('isEmerg').click()">
+                        <input type="checkbox" id="isEmerg" onclick="event.stopPropagation()"> 
+                        <label>Emergency Vehicle</label>
+                    </div>
+                    <button class="btn-primary" onclick="submitViolation()">Process Vehicle</button>
+                </section>
+
+                <div class="chart-card">
+                    <h3 style="font-size:0.8rem; margin-bottom:10px; color: var(--text-muted)">Violation Distribution</h3>
+                    <div style="flex:1; min-height: 0; position:relative; padding: 5px;">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3 style="font-size:0.8rem; margin-bottom:10px; color: var(--text-muted)">Zone Activity</h3>
+                    <div style="flex:1; min-height: 0; position:relative; padding: 5px;">
+                        <canvas id="zoneChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <section class="table-card">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Vehicle</th>
+                            <th>Speed</th>
+                            <th>Fine</th>
+                            <th>Status</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+        </div>
+
+        <div id="view-records" class="page-view">
+            <header><h1>Database Records</h1></header>
+            <div class="table-card">
+                <div style="padding: 15px; background: white; border-bottom: 1px solid #f1f5f9;">
+                    <input type="text" placeholder="Search Vehicle ID..." onkeyup="filterHistory(this.value)" style="max-width: 300px;">
+                </div>
+                <table id="fullHistoryTable">
+                    <thead>
+                        <tr>
+                            <th>Vehicle ID</th>
+                            <th>Speed</th>
+                            <th>Zone</th>
+                            <th>Fine</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-settings" class="page-view">
+            <header><h1>System Settings</h1></header>
+            <section class="form-card" style="width: 400px; height: auto;">
+                <div class="form-group">
+                    <label>Database Connection</label>
+                    <p style="color: var(--success); font-weight: 700; font-size: 0.9rem;">ACTIVE (MySQL)</p>
+                </div>
+                <div class="form-group">
+                    <label>System Mode</label>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Enterprise Production v1.0</p>
+                </div>
+                <button class="btn-primary" style="background: var(--danger); margin-top: 1rem;" onclick="alert('Admin privileges required.')">Purge Database</button>
+            </section>
+        </div>
+    </main>
+
+    <div id="deleteModal">
+        <div class="form-card" style="width:360px; height:auto; padding:2rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
+            <h2 style="font-size:1.1rem; margin-bottom:1.2rem; display:flex; align-items:center; gap:10px;">
+                <i data-lucide="shield-alert" style="color:var(--danger)"></i> Security Check
+            </h2>
+            <div class="form-group" style="position:relative;">
+                <label>Admin Security Key</label>
+                <input type="password" id="adminKeyInput" placeholder="••••••••" style="padding-right:40px; height:40px; font-size:1rem;">
+                <button type="button" onclick="togglePassVisibility()" style="position:absolute; right:10px; top:30px; border:none; background:none; cursor:pointer; color:var(--text-muted); padding:5px;">
+                    <i id="eyeIcon" data-lucide="eye" style="width:18px;"></i>
+                </button>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Access restricted to authorized personnel only.</p>
+            <div style="display:flex; gap:12px; margin-top:1.5rem;">
+                <button class="btn-primary" style="background:#e2e8f0; color:var(--text-main); margin:0;" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-primary" id="confirmDeleteBtn" style="margin:0; background:var(--danger)">Confirm Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        const API_URL = window.location.origin + "/api/violations";
+        let statusChartInst, zoneChartInst;
+        let currentDeleteId = null;
+
+        function showView(viewId) {
+            document.querySelectorAll('.page-view').forEach(view => view.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            document.getElementById('nav-' + viewId).classList.add('active');
+            if(viewId === 'dashboard' || viewId === 'records') fetchHistory();
+        }
+
+        async function submitViolation() {
+            const vIdVal = document.getElementById('vId').value;
+            const speedVal = document.getElementById('speed').value;
+            const zoneVal = document.getElementById('zone').value;
+            if(!vIdVal || !speedVal) { alert("Vehicle ID and Speed required"); return; }
+
+            const data = {
+                vehicleId: vIdVal,
+                speed: parseFloat(speedVal),
+                zone: zoneVal,
+                emergency: document.getElementById('isEmerg').checked
+            };
+
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if(res.ok) {
+                document.getElementById('vId').value = '';
+                document.getElementById('speed').value = '';
+                document.getElementById('zone').value = '';
+                document.getElementById('isEmerg').checked = false;
+                fetchHistory();
+            }
+        }
+
+        // --- NEW MODAL LOGIC ---
+        function deleteRecord(id) {
+            currentDeleteId = id;
+            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('adminKeyInput').value = '';
+            document.getElementById('adminKeyInput').type = 'password';
+            document.getElementById('eyeIcon').setAttribute('data-lucide', 'eye');
+            lucide.createIcons();
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            currentDeleteId = null;
+        }
+
+        function togglePassVisibility() {
+            const input = document.getElementById('adminKeyInput');
+            const icon = document.getElementById('eyeIcon');
+            if (input.type === "password") {
+                input.type = "text";
+                icon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = "password";
+                icon.setAttribute('data-lucide', 'eye');
+            }
+            lucide.createIcons();
+        }
+
+        document.getElementById('confirmDeleteBtn').onclick = async () => {
+            const adminPass = document.getElementById('adminKeyInput').value;
+
+            if (adminPass !== "ADMIN123") {
+                alert("Invalid Security Key!");
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/${currentDeleteId}`, { 
+                    method: 'DELETE',
+                    headers: { 'X-Admin-Key': adminPass }
+                });
+                
+                if(res.ok) {
+                    closeDeleteModal();
+                    fetchHistory();
+                } else {
+                    alert("Access Denied: Backend rejected the key.");
+                }
+            } catch (err) { console.error(err); }
+        };
+        // --- END MODAL LOGIC ---
+
+        async function fetchHistory() {
+            const response = await fetch(API_URL);
+            const list = await response.json();
+            
+            document.getElementById('totalChecks').innerText = list.length;
+            const violations = list.filter(v => v.fine > 0).length;
+            document.getElementById('totalViolations').innerText = violations;
+            const totalFine = list.reduce((sum, v) => sum + v.fine, 0);
+            document.getElementById('revenue').innerText = "Rs. " + totalFine;
+
+            const tableHTML = list.slice(-8).reverse().map(v => {
+                let badgeClass = v.fine > 0 ? 'badge-violation' : 'badge-ok';
+                if(v.emergency) badgeClass = 'badge-emergency';
+                return `<tr>
+                    <td style="font-weight:600">${v.vehicleId}</td>
+                    <td>${v.speed} km/h</td>
+                    <td>Rs. ${v.fine}</td>
+                    <td><span class="badge ${badgeClass}">${v.status || 'PROCESSED'}</span></td>
+                    <td><i data-lucide="trash-2" size="14" class="btn-delete" onclick="deleteRecord(${v.id})"></i></td>
+                </tr>`;
+            }).join('');
+
+            const fullTableHTML = list.map(v => {
+                let badgeClass = v.fine > 0 ? 'badge-violation' : 'badge-ok';
+                if(v.emergency) badgeClass = 'badge-emergency';
+                return `<tr>
+                    <td style="font-weight:600">${v.vehicleId}</td>
+                    <td>${v.speed} km/h</td>
+                    <td>${v.zone || 'N/A'}</td>
+                    <td>Rs. ${v.fine}</td>
+                    <td><span class="badge ${badgeClass}">${v.status || 'PROCESSED'}</span></td>
+                    <td><i data-lucide="trash-2" size="14" class="btn-delete" onclick="deleteRecord(${v.id})"></i></td>
+                </tr>`;
+            }).join('');
+
+            document.querySelector("#historyTable tbody").innerHTML = tableHTML;
+            const fullHistory = document.querySelector("#fullHistoryTable tbody");
+            if(fullHistory) fullHistory.innerHTML = fullTableHTML;
+            
+            lucide.createIcons();
+            updateVisuals(list);
+        }
+
+        function updateVisuals(list) {
+            const statusData = {
+                'Violations': list.filter(v => v.fine > 0).length,
+                'Normal': list.filter(v => v.fine === 0 && !v.emergency).length,
+                'Emergency': list.filter(v => v.emergency).length
+            };
+            const zoneCounts = {};
+            list.forEach(v => { if(v.zone) zoneCounts[v.zone] = (zoneCounts[v.zone] || 0) + 1; });
+
+            if(statusChartInst) statusChartInst.destroy();
+            if(zoneChartInst) zoneChartInst.destroy();
+
+            statusChartInst = new Chart(document.getElementById('statusChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(statusData),
+                    datasets: [{
+                        data: Object.values(statusData),
+                        backgroundColor: ['#ef4444', '#10b981', '#3b82f6'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    layout: { padding: 15 },
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { boxWidth: 15, padding: 20, font: { size: 12, weight: '600' } } 
+                        } 
+                    } 
+                }
+            });
+
+            zoneChartInst = new Chart(document.getElementById('zoneChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(zoneCounts),
+                    datasets: [{
+                        label: 'Checks',
+                        data: Object.values(zoneCounts),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    layout: { padding: { top: 20, bottom: 10, left: 10, right: 10 } },
+                    plugins: { legend: { display: false } }, 
+                    scales: { 
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 11, weight: '500' } } }, 
+                        x: { grid: { display: false }, ticks: { font: { size: 11, weight: '500' } } } 
+                    } 
+                }
+            });
+        }
+
+        function filterHistory(query) {
+            const rows = document.querySelectorAll("#fullHistoryTable tbody tr");
+            rows.forEach(row => {
+                const text = row.cells[0].innerText.toLowerCase();
+                row.style.display = text.includes(query.toLowerCase()) ? "" : "none";
+            });
+        }
+
+        window.onload = fetchHistory;
+    </script>
+</body>
+</html>
