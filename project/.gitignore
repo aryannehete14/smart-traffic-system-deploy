@@ -31,3 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Sensitive config (DO NOT PUSH)
+src/main/resources/application.properties
