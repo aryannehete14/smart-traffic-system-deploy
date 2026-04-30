@@ -5,7 +5,7 @@
 A **Smart Traffic Management System** built using **Spring Boot, MySQL, and REST APIs**, designed to simulate and manage traffic flow efficiently with cloud-based deployment.
 
 🔗 **Live Demo:**
-👉 [https://smart-traffic-system-deploy.onrender.com/](https://smart-traffic-system-deploy.onrender.com/)
+👉 [https://smart-traffic-system-deploy.onrender.com/](https://smart-traffic-system-deploy.onrender.com/) 
 <img width="1919" height="1000" alt="image" src="https://github.com/user-attachments/assets/8939bd6b-ad95-4f0a-9834-a139c84b7c00" />
 
 
